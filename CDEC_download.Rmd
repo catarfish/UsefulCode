@@ -1,0 +1,147 @@
+---
+title: "Download CDEC"
+author: "Catarina Pien"
+date: "1/29/2021"
+output: html_document
+---
+
+Code for downloading data from multiple stations OR multiple sensors on CDEC
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Download Rtools if you don't have latest version at https://cran.r-project.org/bin/windows/Rtools/    
+    * Follow instructions above. May need to restart R a few times during the process to get the make folder to show up correctly. 
+  
+2. Download CDEC Retrieve package
+
+```{r}
+devtools::install_github("flowwest/CDECRetrieve", force=TRUE)
+
+# Alt method:
+# install roxygen2 (normal install method)
+# install.packages("https://cran.r-project.org/src/contrib/Archive/CDECRetrieve/CDECRetrieve_0.1.4.tar.gz", repos=NULL, method = "libcurl")
+# Or use winzip to unzip the files, copy folder into the .libPaths() specified (or go to Tools Install to check where lib is)
+```
+
+3. Load Packages
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(data.table) #rbindlist()
+library(lubridate) #today()
+library(CDECRetrieve) #cdec_datasets
+library(readr)
+```
+
+
+4. Get some metadata on station sensors 
+
+```{r Station sensors, message = FALSE}
+
+# Make a list of the stations you are interested in 
+sta_all<-c("BAC", "BET", "BLP", "LIS")
+
+# Filter out list of unique stations (some are in there multiple times)
+sta <- sort(unique(sta_all))
+
+### First download dataset info ---------------------------------------------
+
+# Loop to get info on what sensors are available for each station
+# Based on station list above
+sensordataset <- list() 
+for(i in 1:length(sta)){
+  dataset <- cdec_datasets(sta[i])
+  dataset$station <- sta[i]  # just for an identifier
+  sensordataset[[i]] <- dataset
+} 
+
+# Bind into dataframe 
+cdec_datasets_df <-rbindlist(sensordataset)   #** LIST INTO DATAFRAME **
+
+# Remove unnecessary objects to save space
+rm(dataset)
+rm(sensordataset)
+
+# Filter to looking at only stations with the sensors you are interested in. 
+# E.g. below is only for water temp event(15-min) and hourly data. 
+# See cdec_datasets_df for the sensor numbers that are relevant to you
+# Sensor 25 = Temp_C
+# Sensor 146 = Temp_F
+cdec_temp <- cdec_datasets_df %>% 
+  filter(sensor_number %in% c(25, 146)) %>% 
+  filter(duration !="daily") %>%
+  arrange(station) %>%
+  mutate(days = end-start) # calculate duration of data
+
+```
+
+5. Download Raw Data from CDEC
+These are at Pacific Daylight Time
+See https://info.water.ca.gov/misc/sql_dates.html for information about how CDEC deals with Daylight Savings Time
+
+This step may take a while.
+
+To query for multiple stations but one sensor:
+```{r Download, message = FALSE}
+
+### Define list of stations ----------------------------------
+stations <- c("BLP", "LIS")
+
+# Define start and end dates - these will remain the same throughout
+start <- "2010-01-01"
+end <- "2019-12-31"
+
+# Define sensor number, time interval 
+sensors <- c("25") # Water Temperature Celsius and Turbidity
+interval <- "E" # Event = every 15 minutes
+
+### Download data, bind, write --------------------------------------------
+Temp_Event <- lapply(stations, 
+                 function(x){
+                   cdec_query(station = x,
+                              sensor_num = sensors,
+                              dur_code = interval,
+                              start_date = start,
+                              end_date = end)
+                 })
+
+Temp_df <- bind_rows(Temp_Event) # bind rows into data frame
+
+```
+
+If you want to query multiple sensors but one station:
+```{r}
+
+### Define station----------------------------------
+stations <- "LIS"
+
+# Define start and end dates - these will remain the same throughout
+start <- "2010-01-01"
+end <- "2019-12-31"
+
+# Define sensor number, time interval 
+sensors <- c("25", "221") # Water Temperature Celsius and Turbidity
+interval <- "E" # Event = every 15 minutes
+
+
+### Download data, bind, write --------------------------------------------
+Data_sensors <- lapply(sensors, 
+                 function(x){
+                   cdec_query(station = stations,
+                              sensor_num = x,
+                              dur_code = interval,
+                              start_date = start,
+                              end_date = end)
+                 })
+
+sensors_df <- bind_rows(Data_sensors) # bind rows into data frame
+```
+
+Write data 
+```{r}
+write_csv(sensors_df, "Data/Temp_raw.csv") #write data
+saveRDS(sensors_df, "Data/Temp_raw.rds") #write rds
+```
+
