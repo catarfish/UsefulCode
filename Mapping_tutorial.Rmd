@@ -1,0 +1,389 @@
+---
+title: "Mapping_tutorial"
+author: "Catarina Pien"
+date: "4/2/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Making static and interactive maps {.tabset}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load packages
+```{r}
+library(tidyverse)
+library(viridis)
+```
+
+Read in data - should have a Latitude and Longitude column in your data
+```{r}
+stationLatLon <- read.csv("data/CDEC_stations.csv")
+stationData <- read.csv("data/StationSensorMetadata.csv") %>%
+  stat
+
+stations <- left_join(stationLatLon, stationData, by = c("Station", "StationName")) 
+stations <-stations %>% 
+  mutate(Duration = 2019-StartYear) %>%
+  select(-c(Contact, Email, IncludedInDataset, BackupSensor:DataTreatmentDescription, ChangesSensorDeployment:SensorAccuracy, Comments:EndDateAdditionalData))
+
+# make up some extra variables to visualize
+stations$Temp <- runif(nrow(stations), min = 5, max = 50)
+```
+
+
+## Static Maps
+
+### Basic map (Code from Sarah Perry) - https://github.com/seperry83/cat-mentorship/blob/main/map-basics.Rmd
+
+```{r}
+library(ggmap)
+
+# Define coordinate bounding box. You could also use numbers if you want. 
+buffer = 0.1
+coordDict = list( 
+    'minLat' = min(stations$Latitude) - buffer,
+    'maxLat' = max(stations$Latitude) + buffer,
+    'minLon' = min(stations$Longitude) - buffer,
+    'maxLon' = max(stations$Longitude) + buffer
+)
+
+# Create map object using your bounded coordinates
+map_obj <- get_stamenmap(
+  bbox = c(left = coordDict[['minLon']], bottom = coordDict[['minLat']], right = coordDict[['maxLon']], top = coordDict[['maxLat']]), # the bounding box
+  zoom = 8, # zoom lvl; higher number = more detail (but also more processing power)
+  maptype = 'terrain-background'# type of basemap; 'terrain' is my default, but check help(get_stamenmap) for a full list
+  )
+
+# Plot the map
+map <- ggmap(map_obj, legend = "right")
+map
+
+# Add your points
+map2 <- map +
+  geom_point(data = stations, aes(x = Longitude, y = Latitude, color = Basin.Name), size = 3) +
+ geom_text(data = stations, aes(label = Station, x = Longitude, y = Latitude), size = 2, vjust = 0, hjust = 0) +
+  labs(x = "Longitude", y = "Latitude")
+map2
+
+# Visualize by a value by size or color
+map +
+  geom_point(data = stations, aes(x = Longitude, y = Latitude, fill = Temp, size = SensorDepth), shape = 21) +
+  scale_size(range = c(1,5), limits = c(0,10)) + 
+  labs(x = "Longitude", y = "Latitude")
+
+```
+
+Watercolor map example!
+Adding gridlines
+```{r}
+map_obj2 <- get_stamenmap(
+  bbox = c(left = coordDict[['minLon']], bottom = coordDict[['minLat']], right = coordDict[['maxLon']], top = coordDict[['maxLat']]), # the bounding box
+  zoom = 8, # zoom lvl; higher number = more detail (but also more processing power)
+  maptype = 'watercolor'# type of basemap; 'terrain' is my default, but check help(get_stamenmap) for a full list
+  )
+
+# Visualize by a value by color
+# Add gridlines (probably a better way to do this?)
+ggmap(map_obj2, legend = "right")+
+  # geom_hline(yintercept =  38.75, color = "darkgrey") +  
+  # geom_hline(yintercept =  38.5, color = "darkgrey") +
+  #    geom_hline(yintercept =  38.25, color = "darkgrey") +
+  # geom_hline(yintercept = 38.0, color = "darkgrey") +
+  # geom_hline(yintercept = 37.75, color = "darkgrey") +
+  # geom_vline(xintercept = -122.00, color = "darkgrey") + 
+  # geom_vline(xintercept = -121.75, color = "darkgrey") + 
+  # geom_vline(xintercept = -121.50, color = "darkgrey") +
+  # geom_vline(xintercept = -121.25, color = "darkgrey") +
+  geom_point(data = stations, aes(x = Longitude, y = Latitude, fill = Duration), shape = 21, size = 3) +
+  scale_fill_viridis() + 
+  labs(title = "CDEC Station Duration of Data", x = "Longitude", y = "Latitude") +
+  theme(panel.grid.major = element_line(color = gray(.5), linetype = "dashed", size = 0.5))
+```
+
+
+### Working with sf package (shapefiles)
+https://cengel.github.io/R-spatial/mapping.html
+
+Convert your points to sf object, which gives it a "geometry" column
+```{r}
+library(sf)# main package for working with shapefiles
+# Define the projection of your points, usually WGS 84 (= crs 4326)
+stations_sf <- st_as_sf(stations, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Look at shapefile
+head(stations_sf)
+plot(stations_sf$geometry)
+plot(stations_sf)
+
+```
+
+
+https://github.com/InteragencyEcologicalProgram/deltamapr
+
+Download a shapefile
+```{r}
+#install deltamapr
+#devtools::install_github("InteragencyEcologicalProgram/deltamapr")
+require(deltamapr) # package created by Sam Bashevkin, containing some useful delta shapefiles
+require(ggspatial) # north arrows and scale bars
+# require(ggsn) alternative for north arrows and scale bars. I didn't like this on eas much.
+
+# Bring this delta waterways shapefile (from deltamapr) into your environment
+WW_Delta <- WW_Delta
+
+# Look at file
+head(WW_Delta)
+plot(WW_Delta)
+plot(WW_Delta$geometry)
+
+# Check projection of file
+st_crs(WW_Delta)
+
+# Change projection of our stations file to align with Delta waterways file
+# Sometimes if you are using multiple files with different projections, they won't match up.
+stationsT <- st_transform(stations_sf, crs = 4269) # NAD83 
+
+# Check what classes these files are to make sure they are compatible
+class(stationsT)
+class(WW_Delta)
+
+
+```
+
+
+Make maps!
+```{r}
+# Plot!
+ggplot() +
+    geom_sf(data = WW_Delta, fill = "steelblue") +
+    geom_sf(data = stationsT, aes(fill = Basin.Name, size = Duration), shape = 21) + 
+    scale_fill_viridis(discrete = TRUE) + 
+    ggtitle("Duration of Stations in the Delta in Years") +
+    theme_bw()
+
+# using EDSM stratum (a type of region)
+strMap <- ggplot() +
+  geom_sf(data = WW_Delta, fill = "steelblue") + 
+  geom_sf(data = R_EDSM_Strata_17P3, aes(fill = Stratum), alpha = 0.4) + 
+  geom_sf(data = stationsT, size = 2)+
+  scale_fill_brewer(palette = "Dark2") +
+  theme_bw()+
+  theme(axis.title = element_blank())
+strMap
+
+# Add scale bar and north arrow, grid lines
+# https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html
+
+  
+strMap2 <- strMap + 
+  annotation_north_arrow(location = "tr", which_north = "true", 
+        pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"),
+        style = north_arrow_fancy_orienteering) +
+  annotation_scale(location = "bl", bar_cols = c("pink", "white", "pink", "white")) +
+  theme(axis.title = element_blank(),
+        panel.grid.major = element_line(color = "grey80", linetype = "dashed", size = 0.5))
+strMap2 
+
+# Adding text
+strMap2 + 
+  geom_text(data = stations, aes(x = Longitude, y = Latitude, label = Station), size = 3, check_overlap = FALSE, color = "darkblue", nudge_x = 0.05, nudge_y = 0.05) + 
+ annotate(geom = "text", x = -122.4, y = 37.85, label = "San Francisco Bay", fontface = "italic", color = "grey22", size = 3.5 ) 
+  
+# Add basemap
+# https://cengel.github.io/R-spatial/mapping.html
+
+# Redefine your boundaries
+coordDict3 = list( 
+    'minLat' = 37.25,
+    'maxLat' = 39,
+    'minLon' = -122.75,
+    'maxLon' = -121
+)
+
+# Map 
+map_obj3 <- get_stamenmap(
+  bbox = c(left = coordDict3[['minLon']], bottom = coordDict3[['minLat']], right = coordDict3[['maxLon']], top = coordDict3[['maxLat']]), # the bounding box
+  zoom = 9, # zoom lvl; higher number = more detail (but also more processing power)
+  maptype = 'terrain-background'# type of basemap; 'terrain' is my default, but check help(get_stamenmap) for a full list
+  )
+
+# Plot the map
+# Note the inherit.aes = FALSE! Otherwise this does not work.
+
+map_final <- ggmap(map_obj3) + 
+  geom_sf(data = WW_Delta, fill = "steelblue", inherit.aes = FALSE) + 
+  geom_sf(data = R_EDSM_Strata_17P3, aes(fill = Stratum), alpha = 0.5, inherit.aes = FALSE) + 
+  geom_sf(data = stationsT, size = 2, inherit.aes = FALSE)+
+  annotation_north_arrow(location = "tr", which_north = "true", 
+        pad_x = unit(.1, "in"), pad_y = unit(0.2, "in"),
+        style = north_arrow_fancy_orienteering) +
+  annotation_scale(location = "bl", bar_cols = c("black", "white", "black", "white")) +
+  annotate(geom = "text", x = -122.4, y = 37.85, label = "San Francisco Bay", fontface = "italic", color = "grey22", size = 3.5 ) +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(title = "Map of CDEC Stations") + 
+  theme_bw()+
+  theme(axis.title = element_blank()) 
+map_final
+```
+
+
+Export image:
+
+https://stackoverflow.com/questions/38907514/saving-a-high-resolution-image-in-r    
+jpeg(), tiff(),png() are also functions
+```{r, eval = FALSE}
+map_final
+ggsave("StationMap.jpeg", width = 8, height = 5, device = 'jpeg', dpi = 300)
+
+```
+
+Export shapefiles: 
+```{r, eval = FALSE}
+st_write(stations_sf, "data/Stations.shp", delete_layer = T, )
+st_write(stations_sf, "data/StationsFile.csv", overwrite = T, layer_options = "GEOMETRY=AS_XY")
+```
+
+
+Export map file so you can later load and edit it easily:
+```{r, eval = FALSE}
+save(map_final, file = "CDEC-station-map.Rdata")
+load("CDEC-Station-map.Rdata")
+```
+
+Set opacity of basemap: 
+https://stackoverflow.com/questions/38126102/set-opacity-of-background-map-with-ggmap
+
+
+For creating regions on your map
+https://github.com/rosehartman/TempRegions/blob/master/app.R
+
+
+
+
+
+
+
+
+
+
+
+## Interactive Maps 
+
+### Leaflet
+
+Discrete Data Color-coding
+
+Note you can change the label to display what you want. You can also make the labels fancier by writing some html.     
+https://rstudio.github.io/leaflet/choropleths.html
+```{r}
+library(leaflet)
+pal <- colorFactor(viridis(7), stations$Basin.Name)
+# alternatively, this could be colorNumeric, colorBin, or colorQuantile
+# https://rstudio.github.io/leaflet/colors.html
+
+stations %>%
+  leaflet() %>%
+  addTiles() %>%
+  addCircleMarkers(
+    color = ~pal(Basin.Name),
+    stroke = FALSE,
+    fillOpacity = 0.8,
+    lng = ~Longitude,
+    lat = ~Latitude,
+  label = ~paste(Station, "Lat:", Latitude, "Long:", Longitude))%>%
+  addLegend(pal = pal,
+            values = ~Basin.Name,
+            position = "bottomright")
+
+```
+
+Continuous Data change size of dots
+```{r}
+# You can also manually assign colors to the palettes. 
+
+pal2 <- colorFactor(c("purple3", "blue3", "forestgreen", "orange", "orangered", "hotpink", "grey"), domain = c("CACHE CR", "DELTA", "EAST BAY", "MOKELUMNE R", "SACRAMENTO R", "SAN JOAQUIN R", "STANISLAUS R"))
+
+
+stations %>%
+  leaflet() %>%
+  addTiles() %>%
+  addCircleMarkers(
+    fillColor = ~pal2(Basin.Name),
+    radius = ~sqrt(Temp),
+    stroke = FALSE, #circle outline
+    fillOpacity = 0.6,
+    lng = ~Longitude,
+    lat = ~Latitude,
+   label = ~paste(Station, "Lat:", Latitude, "Long:", Longitude, "Temp:", Temp))%>%
+  addLegend(pal = pal2,
+            values = ~Basin.Name,
+            position = "bottomright")
+```
+
+
+### Mapview
+
+If you hover over, tells you your lat/lon
+```{r}
+library(mapview)
+mapview(stations_sf)
+mapview(stations_sf, zcol = "Basin.Name")
+
+```
+
+
+
+## Spatial Operations
+
+```{r, eval = FALSE}
+st_intersection()
+st_buffer()
+st_boundary()
+```
+
+
+
+
+
+
+
+
+
+
+## Random - I found this interesting! You can use online databases to find shops in Sacramento, or other amenities! 
+https://dominicroye.github.io/en/2018/accessing-openstreetmap-data-with-r/
+
+```{r }
+library(osmdata)
+
+head(available_features())
+head(available_tags("amenity"))
+head(available_tags("shop"))
+
+q <- getbb("Sacramento") %>%
+      opq() %>%
+       add_osm_feature("amenity", "restaurant")
+
+
+restaurant <- osmdata_sf(q)
+restaurant
+
+#our background map
+sac_map <- get_map(getbb("Sacramento"), maptype = "toner-background")
+
+#final map
+ggmap(sac_map)+
+  geom_sf(data = restaurant$osm_points,
+          inherit.aes = FALSE,
+          colour = "#238443",
+          fill = "#004529",
+          alpha = .5,
+          size = 4,
+          shape = 21)+
+  labs(x = "", y = "")
+```
+
