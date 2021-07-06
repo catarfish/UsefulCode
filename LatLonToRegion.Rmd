@@ -1,0 +1,48 @@
+---
+title: "LatLonToRegion"
+author: "Catarina Pien"
+date: "7/6/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(deltamapr)
+# devtools::install_github("InteragencyEcologicalProgram/deltamapr")
+require(deltamapr)
+library(sf)
+library(mapview)
+library(viridis)
+```
+
+Read in data - a latlon csv and a shapefile
+```{r}
+EDSMRegions <- R_EDSM_Strata_17P3
+mapview(EDSMRegions)
+st_crs(EDSMRegions) #CRS - 4269 NAD83 UTM10N
+
+stations <- read.csv("data/CDEC_stations.csv")
+stations_sf <- st_as_sf(stations, coords = c("Longitude", "Latitude"), crs = 4326) # change to sf file, define projection as WGS1984
+stationsT <- st_transform(stations_sf, crs = st_crs(EDSMRegions))  
+st_crs(stationsT) # Change projection to NAD83
+```
+
+Label stations with regions based on where they are
+```{r}
+intersect <- st_intersection(stationsT, EDSMRegions)
+```
+
+Plot
+```{r}
+ggplot() +
+    geom_sf(data = EDSMRegions, aes(color = Stratum)) +
+    geom_sf(data = intersect, aes(color = Stratum)) + 
+    scale_color_viridis(discrete = TRUE) + 
+    ggtitle("Region Assignment") +
+    theme_bw()
+```
+

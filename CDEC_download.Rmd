@@ -90,11 +90,11 @@ To query for multiple stations but one sensor:
 stations <- c("BLP", "LIS")
 
 # Define start and end dates - these will remain the same throughout
-start <- "2010-01-01"
-end <- "2019-12-31"
+start <- "2018-01-01"
+end <- "2018-12-31"
 
 # Define sensor number, time interval 
-sensors <- c("25") # Water Temperature Celsius and Turbidity
+sensors <- c("25") # Water Temperature Celsius
 interval <- "E" # Event = every 15 minutes
 
 ### Download data, bind, write --------------------------------------------
