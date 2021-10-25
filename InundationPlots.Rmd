@@ -1,0 +1,66 @@
+---
+title: "InundationPlots"
+author: "Catarina Pien"
+date: "10/25/2021"
+output: html_document
+---
+# Inundation Plots
+
+    This code plots CPUE data vs. inundation to show the response of CPUE to inundation. Zooplankton data is used as an example.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+Load packages
+```{r}
+library(tidyverse)
+library(readr)
+library(lubridate)
+```
+
+## Read Inundation dataset and Zoop dataset
+```{r}
+InundData <- read_csv("https://portal.edirepository.org/nis/dataviewer?packageid=edi.840.1&entityid=186964642c42e5a8b8e44fc87ff10bbf")
+ZoopData <- read_csv("https://portal.edirepository.org/nis/dataviewer?packageid=edi.494.1&entityid=9190cd46d697e59aca2de678f4ca1c95", col_types = cols(Tide = "f", SpCnd = "d", pH = "d", DO = "d", Turbidity = "d", MicrocystisVisualRank = "f", Comment_PQC = "c"))
+glimpse(ZoopData)
+```
+
+## Summarize bio data by date
+* Filter to species and station and years
+* Calculate mean CPUE for each day
+* Took out one giant peak to see the plot better
+
+```{r}
+ZoopSum <- ZoopData %>%
+  filter(StationCode == "STTD", 
+         TaxonName %in% c("Cladocera", "Cyclopoida", "Copepoda"),
+         WY > 2005)%>%
+  group_by(StationCode, Date) %>%
+  summarize(meanCPUE = mean(CPUE_ed, na.rm = TRUE)) %>%
+  filter(meanCPUE<1e+05) %>%
+  ungroup()
+```
+
+## Edit inundation data
+* Filter to dates of interest
+* Assign inundation as occurring up to 10 days after official "YES" for uninundation
+* Assign a numerical value to plot in the background for inundation (use max of CPUE, though in this example a high CPUE was removed to better visualize data)
+```{r}
+inundation <- select(InundData, -c(StageHeight_FW:Overtopping_LIS)) %>%
+  filter(Date>"2005-10-01" & Date<"2019-01-01") %>%
+  mutate(Inundation2 = ifelse(lead(Inundation, 10) == "TRUE", "TRUE", Inundation),
+         Inundation_n = ifelse(Inundation2 == "TRUE", 9e+04, 0))
+```
+
+## Make inundation plot
+```{r}
+# Overall CPUE
+ggplot() +
+  geom_col(data = inundation, aes(x = Date, y = Inundation_n), fill = "light blue") +
+  geom_line(data = ZoopSum, aes(x = Date, y = meanCPUE)) +
+  scale_x_date(date_breaks = "6 months") +
+  labs(y = "Mean CPUE") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90))
+```
+
