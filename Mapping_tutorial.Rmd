@@ -17,13 +17,17 @@ Load packages
 ```{r}
 library(tidyverse)
 library(viridis)
+library(lubridate)
 ```
 
 Read in data - should have a Latitude and Longitude column in your data
 ```{r}
-stationLatLon <- read.csv("data/CDEC_stations.csv")
-stationData <- read.csv("data/StationSensorMetadata.csv") %>%
-  stat
+stationLatLon <- read.csv("https://portal.edirepository.org/nis/dataviewer?packageid=edi.591.2&entityid=a059f5eea4f8500fe1a43566451ec593") %>%
+  select(-County, -HydrologicArea, -HabitatType, -EndDateDataset, -Agency) %>%
+  rename(StartDate = StartDateDataset) %>%
+  mutate(StartYear = year(StartDate))
+
+stationData <- read.csv("https://portal.edirepository.org/nis/dataviewer?packageid=edi.591.2&entityid=c1b380b49daa12df59335f40a7d67b58") 
 
 stations <- left_join(stationLatLon, stationData, by = c("Station", "StationName")) 
 stations <-stations %>% 
@@ -64,7 +68,7 @@ map
 
 # Add your points
 map2 <- map +
-  geom_point(data = stations, aes(x = Longitude, y = Latitude, color = Basin.Name), size = 3) +
+  geom_point(data = stations, aes(x = Longitude, y = Latitude, color = Basin), size = 3) +
  geom_text(data = stations, aes(label = Station, x = Longitude, y = Latitude), size = 2, vjust = 0, hjust = 0) +
   labs(x = "Longitude", y = "Latitude")
 map2
@@ -155,16 +159,21 @@ class(WW_Delta)
 ```
 
 
-Make maps!
+### Make maps!
+
+#### Basic Map
 ```{r}
 # Plot!
 ggplot() +
     geom_sf(data = WW_Delta, fill = "steelblue") +
-    geom_sf(data = stationsT, aes(fill = Basin.Name, size = Duration), shape = 21) + 
+    geom_sf(data = stationsT, aes(fill = Basin, size = Duration), shape = 21) + 
     scale_fill_viridis(discrete = TRUE) + 
     ggtitle("Duration of Stations in the Delta in Years") +
     theme_bw()
+```
 
+#### Add regions
+```{r}
 # using EDSM stratum (a type of region)
 strMap <- ggplot() +
   geom_sf(data = WW_Delta, fill = "steelblue") + 
@@ -174,8 +183,12 @@ strMap <- ggplot() +
   theme_bw()+
   theme(axis.title = element_blank())
 strMap
+```
 
-# Add scale bar and north arrow, grid lines
+
+#### Add scale bar and north arrow, grid lines
+```{r}
+
 # https://www.r-spatial.org/r/2018/10/25/ggplot2-sf.html
 
   
@@ -187,12 +200,21 @@ strMap2 <- strMap +
   theme(axis.title = element_blank(),
         panel.grid.major = element_line(color = "grey80", linetype = "dashed", size = 0.5))
 strMap2 
+```
 
+
+#### Add labels 
+(better on a map with less stations!)
+```{r}
 # Adding text
 strMap2 + 
   geom_text(data = stations, aes(x = Longitude, y = Latitude, label = Station), size = 3, check_overlap = FALSE, color = "darkblue", nudge_x = 0.05, nudge_y = 0.05) + 
  annotate(geom = "text", x = -122.4, y = 37.85, label = "San Francisco Bay", fontface = "italic", color = "grey22", size = 3.5 ) 
-  
+```
+
+#### Cleaned up map
+
+```{r}
 # Add basemap
 # https://cengel.github.io/R-spatial/mapping.html
 
@@ -213,7 +235,6 @@ map_obj3 <- get_stamenmap(
 
 # Plot the map
 # Note the inherit.aes = FALSE! Otherwise this does not work.
-
 map_final <- ggmap(map_obj3) + 
   geom_sf(data = WW_Delta, fill = "steelblue", inherit.aes = FALSE) + 
   geom_sf(data = R_EDSM_Strata_17P3, aes(fill = Stratum), alpha = 0.5, inherit.aes = FALSE) + 
@@ -231,8 +252,10 @@ map_final
 ```
 
 
-Export image:
 
+### Export:
+
+#### Images
 https://stackoverflow.com/questions/38907514/saving-a-high-resolution-image-in-r    
 jpeg(), tiff(),png() are also functions
 ```{r, eval = FALSE}
@@ -241,14 +264,14 @@ ggsave("StationMap.jpeg", width = 8, height = 5, device = 'jpeg', dpi = 300)
 
 ```
 
-Export shapefiles: 
+#### Export shapefiles: 
 ```{r, eval = FALSE}
 st_write(stations_sf, "data/Stations.shp", delete_layer = T, )
 st_write(stations_sf, "data/StationsFile.csv", overwrite = T, layer_options = "GEOMETRY=AS_XY")
 ```
 
 
-Export map file so you can later load and edit it easily:
+#### Export map file so you can later load and edit it easily:
 ```{r, eval = FALSE}
 save(map_final, file = "CDEC-station-map.Rdata")
 load("CDEC-Station-map.Rdata")
@@ -281,7 +304,7 @@ Note you can change the label to display what you want. You can also make the la
 https://rstudio.github.io/leaflet/choropleths.html
 ```{r}
 library(leaflet)
-pal <- colorFactor(viridis(7), stations$Basin.Name)
+pal <- colorFactor(viridis(7), stations$Basin)
 # alternatively, this could be colorNumeric, colorBin, or colorQuantile
 # https://rstudio.github.io/leaflet/colors.html
 
@@ -289,14 +312,14 @@ stations %>%
   leaflet() %>%
   addTiles() %>%
   addCircleMarkers(
-    color = ~pal(Basin.Name),
+    color = ~pal(Basin),
     stroke = FALSE,
     fillOpacity = 0.8,
     lng = ~Longitude,
     lat = ~Latitude,
   label = ~paste(Station, "Lat:", Latitude, "Long:", Longitude))%>%
   addLegend(pal = pal,
-            values = ~Basin.Name,
+            values = ~Basin,
             position = "bottomright")
 
 ```
@@ -305,14 +328,14 @@ Continuous Data change size of dots
 ```{r}
 # You can also manually assign colors to the palettes. 
 
-pal2 <- colorFactor(c("purple3", "blue3", "forestgreen", "orange", "orangered", "hotpink", "grey"), domain = c("CACHE CR", "DELTA", "EAST BAY", "MOKELUMNE R", "SACRAMENTO R", "SAN JOAQUIN R", "STANISLAUS R"))
+pal2 <- colorFactor(c("purple3", "blue3", "forestgreen", "orange", "orangered", "hotpink", "grey"), domain = c("Cache Cr", "Delta", "East Bay", "Mokelumne R", "Sacramento R", "San Joaquin R", "Stanislaus R"))
 
 
 stations %>%
   leaflet() %>%
   addTiles() %>%
   addCircleMarkers(
-    fillColor = ~pal2(Basin.Name),
+    fillColor = ~pal2(Basin),
     radius = ~sqrt(Temp),
     stroke = FALSE, #circle outline
     fillOpacity = 0.6,
@@ -320,7 +343,7 @@ stations %>%
     lat = ~Latitude,
    label = ~paste(Station, "Lat:", Latitude, "Long:", Longitude, "Temp:", Temp))%>%
   addLegend(pal = pal2,
-            values = ~Basin.Name,
+            values = ~Basin,
             position = "bottomright")
 ```
 
@@ -331,7 +354,7 @@ If you hover over, tells you your lat/lon
 ```{r}
 library(mapview)
 mapview(stations_sf)
-mapview(stations_sf, zcol = "Basin.Name")
+mapview(stations_sf, zcol = "Basin")
 
 ```
 
