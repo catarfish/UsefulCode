@@ -14,50 +14,52 @@ library(knitr)
 
 # Rmd Basics for crafting your document {#RmdTools}
 
-## Output 
+## Output
 
-* Generally stick with html
-* In the output section in the YAML, you can choose "pdf_document", "word_document" or "html_document." 
-* I have chosen bookdown::html_document2, which allows for certain features like auto-numbering for figures/tables, referencing figures/tables, sections 
+-   Generally stick with html (or version of html) to allow interactive features to work, not have to do much tweaking of layout
+
+-   In the output section in the YAML, you can choose "pdf_document", "word_document" or "html_document."
+
+-   I have chosen bookdown::html_document2, which allows for certain features like auto-numbering for figures/tables, referencing figures/tables, sections
+
+-   to get pdf output to work, you need **tinytex** :
+
+    -   install.packages("tinytex")
+    -   tinytex::install_tinytex()
 
 ![YAML Screenshot](YAML_screenshot.jpg)
 
 ## Display
 
+*Note*: The "Visual" Tab under the toolbar allows you to see what your document is looking like, and you can edit in there, with R markdown automatically converting to code for you.
+
 ### Font
 
-* _Italics_: `_text_` or `*text*`
-* __Bold__: `__text__` (two underscores) or `**text**`
-* Subscripts e.g. H~2~O `H~2~O`
+-   *Italics*: `_text_` or `*text*`
+-   **Bold**: `__text__` (two underscores) or `**text**`
+-   Subscripts e.g. H~2~O `H~2~O`
 
 ### Blockquotes
 
-Use `>`  
+Use `>`
 
-    > "The mission of the Bureau of Reclamation is to manage, develop, and 
-    > protect water and related resources in an environmentally and
-    > economically sound manner in the interest of the American public." 
-    > 
-    > --- Bureau of Reclamation
-
+```         
 > "The mission of the Bureau of Reclamation is to manage, develop, and 
 > protect water and related resources in an environmentally and
 > economically sound manner in the interest of the American public." 
 > 
 > --- Bureau of Reclamation
+```
 
-### Indent Text  
+> "The mission of the Bureau of Reclamation is to manage, develop, and protect water and related resources in an environmentally and economically sound manner in the interest of the American public."
+>
+> --- Bureau of Reclamation
 
-Use `|`  
+### Indent Text
 
-    | Here you can 
-    |  indent and separate 
-    |   lines
-    |    for fun 
-    |   patterns
-    |  like
-    | this 
+Use `|`
 
+```         
 | Here you can 
 |  indent and separate 
 |   lines
@@ -65,68 +67,77 @@ Use `|`
 |   patterns
 |  like
 | this 
-
-### Text in a gray block   
-Enclose in ` ``` `  or indent by 4 spaces  
-
-    ``` 
-    Here is a chunk of code 
-    ```    
-Result:  
 ```
+
+| Here you can
+|  indent and separate
+|   lines
+|    for fun
+|   patterns
+|  like
+| this
+
+### Text in a block
+
+Enclose in ```` ``` ```` or indent by 4 spaces
+
+````         
+``` 
+Here is a chunk of code 
+```    
+````
+
+Result:
+
+```         
 Here is a chunk of code
 ```
 
-### Equations   
-Equations  
+### Equations
+
+Equations\
 Surround with `$`
 
-    $a^2 + b^2 = c^2$  
+```         
+$a^2 + b^2 = c^2$  
+```
 
 $a^2 + b^2 = c^2$.
 
+Alternatively for a more complicated equation:
 
-Alternatively for a more complicated equation:   
-
-
-    \begin{equation} 
-      f\left(k\right) = \binom{n}{k} p^k\left(1-p\right)^{n-k}
-      (\#eq:binom)
-    \end{equation} 
-
-
-(The \#eq:binom can be used to reference this equation later)
-
-
+```         
 \begin{equation} 
   f\left(k\right) = \binom{n}{k} p^k\left(1-p\right)^{n-k}
   (\#eq:binom)
 \end{equation} 
-    
+```
+
+(The #eq:binom can be used to reference this equation later)
+
+```{=tex}
+\begin{equation} 
+  f\left(k\right) = \binom{n}{k} p^k\left(1-p\right)^{n-k}
+  (\#eq:binom)
+\end{equation}
+```
 ## Organization
 
-### Headers: 
+### Headers:
 
-`# Header 1 (Largest)`  
-`## Header 2`  
-`### Header 3`  
+`# Header 1 (Largest)`\
+`## Header 2`\
+`### Header 3`
 
-### Header with no numbering: {-} 
+### Header with no numbering: {.unnumbered}
 
 `### Header {-}`
 
-### Lists: 
+### Lists:
 
 #### Use `*`, `-`, or `+`
 
-    * peas
-    * apples
-    * carrots
-      * baby
-      * large
-        * colored
-        * orange
-
+```         
 * peas
 * apples
 * carrots
@@ -134,28 +145,38 @@ Alternatively for a more complicated equation:
   * large
     * colored
     * orange
-    
+```
+
+-   peas
+-   apples
+-   carrots
+    -   baby
+    -   large
+        -   colored
+        -   orange
+
 #### Use numbers:
 
-    1. Enter data
-    2. QAQC
-    3. Publish Data  
-
+```         
 1. Enter data
 2. QAQC
-3. Publish Data
+3. Publish Data  
+```
 
-  
+1.  Enter data
+2.  QAQC
+3.  Publish Data
+
 ### Tabs {.tabset .tabset-pills}
 
-Use `{.tabset}` and header levels. Sub-headers (exactly one level down) will become tabs.  
-` ### Header {.tabset} `   
-` #### Plots `  
-` code relevant to plots`
-` #### Tables`  
-` code relevant to tables`
+Use `{.tabset}` and header levels. Sub-headers (exactly one level down) will become tabs.\
+`### Header {.tabset}`\
+`#### Plots`\
+`code relevant to plots` `#### Tables`\
+`code relevant to tables`
 
-#### Plots 
+#### Plots
+
 ```{r}
 head(cars)
 ggplot(cars) + geom_point(aes(speed, dist))  
@@ -177,10 +198,11 @@ knitr::kable((cars[10:20,]), "simple",  caption = "Table with cars")
 ```
 
 ### Code, Plotting, Captions
+
 #### Code
 
-* Insert R Chunk  
-* Write code in chunk
+-   Insert R Chunk\
+-   Write code in chunk
 
 ![Inserting R Chunk](Rchunk.jpg)
 
@@ -190,40 +212,42 @@ summary(iris)
 ```
 
 #### Plot
+
 ```{r plot, fig.align = 'center'}
 library(ggplot2)
 ggplot(iris, aes(x = Sepal.Length, y = Petal.Length)) + geom_point()
 ```
 
 #### Figure options
-* fig.align = "center" "right" "left"
-* fig.asp = ratio of width:height, height is calculated from fig.width*fig.asp
-* fig.margin = TRUE (place figure in figure margin)
-* fig.fullwidth = TRUE (figure is across full width)
-* fig.width
-* fig.height
-* fig.dim = c(8,6) (width, height)
-* fig.link - add a link to the figure
-* fig.cap = figure caption
-* out.width, out.height - specify output size
-  * out.width = "50%" (can then include two figures side by side)
-  * out.width = 8
-* out.extra - miscellaneous
-  * out.extra = 'angle=90'
-* dpi = 300 (fixes resolution)
 
-  
-
+-   fig.align = "center" "right" "left"
+-   fig.asp = ratio of width:height, height is calculated from fig.width\*fig.asp
+-   fig.margin = TRUE (place figure in figure margin)
+-   fig.fullwidth = TRUE (figure is across full width)
+-   fig.width
+-   fig.height
+-   fig.dim = c(8,6) (width, height)
+-   fig.link - add a link to the figure
+-   fig.cap = figure caption
+-   out.width, out.height - specify output size
+    -   out.width = "50%" (can then include two figures side by side)
+    -   out.width = 8
+-   out.extra - miscellaneous
+    -   out.extra = 'angle=90'
+-   dpi = 300 (fixes resolution)
 
 #### Image caption
-    A normal paragraph.
-    
-   ```
-    {r iris-fig, fig.cap='A scatterplot of the data `iris` using **ggplot.**'}
-    ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width)) + geom_point()
-  ```
-A normal paragraph.
 
+```         
+A normal paragraph.
+```
+
+```
+{r iris-fig, fig.cap='A scatterplot of the data `iris` using **ggplot.**'}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width)) + geom_point()
+```
+
+A normal paragraph.
 
 ```{r iris-fig, echo = FALSE, message = FALSE, fig.cap='A scatterplot of the data `iris` using **ggplot.**', fig.align = 'center'}
 ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width)) + geom_point()
@@ -231,7 +255,7 @@ ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width)) + geom_point()
 
 ## Tables
 
-Use `kable`  
+Use `kable`
 
 ```{r iris-table}
 library(knitr)
@@ -239,30 +263,34 @@ knitr::kable(head(iris), "simple",  caption = "Table with sepal and petal length
 ```
 
 ## Images
-`![Here are some baby salmon](salmon.jpg)`
 
-![Here are some baby salmon](salmon.jpg)
+`![Here are some baby salmon (https://www.nps.gov/katm/blogs/images/SockeyeSalmonAlevin.jpg)`
+
+![Here are some baby salmon](https://www.nps.gov/katm/blogs/images/SockeyeSalmonAlevin.jpg)
 
 ## In text References
 
 ### Figure/Table/Chapter/Equation
 
-    Table: \@ref(tab:iris-table)
-    Figure: \@ref(fig:iris-fig)
-    Section of this document: \@ref(RmdTools)
-    Equation: \@ref(eq:binom)
+```         
+Table: \@ref(tab:iris-table)
+Figure: \@ref(fig:iris-fig)
+Section of this document: \@ref(RmdTools)
+Equation: \@ref(eq:binom)
+```
 
 ![See name of figure (iris-fig)](FigureCaption.jpg)
 
-```
+```         
   You can label section titles using `{#label}` after them,  
   e.g., we can reference  \@ref(RmdTools).   
 ```
 
-* See table: \@ref(tab:iris-table)
-* See figure: \@ref(fig:iris-fig)  
-* Go to the top of the page: \@ref(RmdTools)
-* Cite equation: \@ref(eq:binom)
+-   See table: \@ref(tab:iris-table)
+-   See figure: \@ref(fig:iris-fig)\
+-   Go to the top of the page: \@ref(RmdTools)
+-   Cite equation: \@ref(eq:binom)
 
-### Citations   
+### Citations
+
 You can write citations, too. For example, we are using the **bookdown** package [@R-bookdown] in this sample book, which was built on top of R Markdown and **knitr** [@xie2015].
