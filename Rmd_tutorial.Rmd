@@ -7,14 +7,20 @@ output:
      code_folding: hide
 ---
 
-# Rmd Basics for crafting your document {#RmdTools}
+```{r, echo = FALSE}
+library(ggplot2)
+library(knitr)
+```
 
+# Rmd Basics for crafting your document {#RmdTools}
 
 ## Output 
 
 * Generally stick with html
 * In the output section in the YAML, you can choose "pdf_document", "word_document" or "html_document." 
 * I have chosen bookdown::html_document2, which allows for certain features like auto-numbering for figures/tables, referencing figures/tables, sections 
+
+![YAML Screenshot](YAML_screenshot.jpg)
 
 ## Display
 
@@ -143,9 +149,32 @@ Alternatively for a more complicated equation:
 ### Tabs {.tabset .tabset-pills}
 
 Use `{.tabset}` and header levels. Sub-headers (exactly one level down) will become tabs.  
-` ### Project {.tabset} `   
-` #### Part A `  
-` #### Part B `  
+` ### Header {.tabset} `   
+` #### Plots `  
+` code relevant to plots`
+` #### Tables`  
+` code relevant to tables`
+
+#### Plots 
+```{r}
+head(cars)
+ggplot(cars) + geom_point(aes(speed, dist))  
+```
+
+```{r}
+head(iris)
+ggplot(iris)  + geom_boxplot(aes(Sepal.Length, fill = Species)) +theme_bw()
+```
+
+#### Tables
+
+```{r}
+knitr::kable((iris[10:20,]), "simple",  caption = "Table with sepal and petal length and width")
+```
+
+```{r}
+knitr::kable((cars[10:20,]), "simple",  caption = "Table with cars")
+```
 
 ### Code, Plotting, Captions
 #### Code
@@ -215,11 +244,13 @@ knitr::kable(head(iris), "simple",  caption = "Table with sepal and petal length
 ![Here are some baby salmon](salmon.jpg)
 
 ## In text References
-### Figure/Table/Chapter  
+
+### Figure/Table/Chapter/Equation
 
     Table: \@ref(tab:iris-table)
     Figure: \@ref(fig:iris-fig)
-    Chapter of this book: \@ref(intro)
+    Section of this document: \@ref(RmdTools)
+    Equation: \@ref(eq:binom)
 
 ![See name of figure (iris-fig)](FigureCaption.jpg)
 
@@ -231,6 +262,7 @@ knitr::kable(head(iris), "simple",  caption = "Table with sepal and petal length
 * See table: \@ref(tab:iris-table)
 * See figure: \@ref(fig:iris-fig)  
 * Go to the top of the page: \@ref(RmdTools)
+* Cite equation: \@ref(eq:binom)
 
 ### Citations   
 You can write citations, too. For example, we are using the **bookdown** package [@R-bookdown] in this sample book, which was built on top of R Markdown and **knitr** [@xie2015].
